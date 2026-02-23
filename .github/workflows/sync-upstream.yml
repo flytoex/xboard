@@ -13,9 +13,10 @@ jobs:
   sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout master
         uses: actions/checkout@v4
         with:
+          ref: master
           fetch-depth: 0
 
       - name: Add upstream and fetch
@@ -24,23 +25,19 @@ jobs:
           git fetch upstream
           git fetch origin
 
-      - name: Create sync branch and merge
+      # 把 upstream/master 合并到当前 master（在工作区产生变更，但不提交）
+      - name: Merge upstream/master into local master (no commit)
         run: |
-          BR="sync-upstream-$(date +%Y%m%d)"
-          echo "BRANCH=$BR" >> $GITHUB_ENV
-          git checkout -b "$BR"
           git merge upstream/master --no-edit || true
 
-      - name: Push branch
-        run: |
-          git push -u origin "${{ env.BRANCH }}"
-
+      # 由 create-pull-request 自动创建分支并开 PR（base=master, branch=sync-upstream-YYYYMMDD）
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: ${{ env.BRANCH }}
-          title: "chore: sync upstream $(date +%Y-%m-%d)"
+          base: master
+          branch: sync-upstream-${{ github.run_id }}
+          title: chore: sync upstream
           body: |
-            Automated weekly sync from cedar2025/Xboard upstream.
+            Automated sync from cedar2025/Xboard upstream.
             Review changes and merge if safe.
           labels: upstream-sync
