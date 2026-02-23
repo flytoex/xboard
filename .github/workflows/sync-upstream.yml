@@ -1,0 +1,46 @@
+name: Sync Upstream (weekly)
+
+on:
+  schedule:
+    - cron: "0 3 * * 1"   # 每周一 UTC 03:00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Add upstream and fetch
+        run: |
+          git remote add upstream https://github.com/cedar2025/Xboard.git || true
+          git fetch upstream
+          git fetch origin
+
+      - name: Create sync branch and merge
+        run: |
+          BR="sync-upstream-$(date +%Y%m%d)"
+          echo "BRANCH=$BR" >> $GITHUB_ENV
+          git checkout -b "$BR"
+          git merge upstream/master --no-edit || true
+
+      - name: Push branch
+        run: |
+          git push -u origin "${{ env.BRANCH }}"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ env.BRANCH }}
+          title: "chore: sync upstream $(date +%Y-%m-%d)"
+          body: |
+            Automated weekly sync from cedar2025/Xboard upstream.
+            Review changes and merge if safe.
+          labels: upstream-sync
