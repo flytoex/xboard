@@ -1,0 +1,46 @@
+name: Cherry-pick fix into master
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: "Commit SHA to cherry-pick"
+        required: true
+      title:
+        description: "PR title suffix"
+        required: true
+        default: "hotfix"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  pick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cherry-pick
+        run: |
+          set -e
+          BR="cherry-pick-${{ inputs.title }}-$(date +%Y%m%d%H%M%S)"
+          echo "BRANCH=$BR" >> $GITHUB_ENV
+          git checkout -b "$BR"
+          git cherry-pick ${{ inputs.commit_sha }}
+
+      - name: Push branch
+        run: |
+          git push -u origin "${{ env.BRANCH }}"
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: ${{ env.BRANCH }}
+          title: "fix: ${{ inputs.title }} (cherry-pick ${{ inputs.commit_sha }})"
+          body: |
+            Automated cherry-pick: ${{ inputs.commit_sha }}
+          labels: hotfix
