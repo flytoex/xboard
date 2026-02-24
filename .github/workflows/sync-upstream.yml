@@ -2,7 +2,7 @@ name: Sync Upstream (weekly)
 
 on:
   schedule:
-    - cron: "0 3 * * 1"   # 每周一 UTC 03:00
+    - cron: "0 3 * * 1" # 每周一 UTC 03:00
   workflow_dispatch:
 
 permissions:
@@ -19,24 +19,34 @@ jobs:
           ref: master
           fetch-depth: 0
 
+      - name: Configure git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
       - name: Add upstream and fetch
         run: |
           git remote add upstream https://github.com/cedar2025/Xboard.git || true
-          git fetch upstream
-          git fetch origin
+          git fetch --prune upstream
+          git fetch --prune origin
 
-      # 把 upstream/master 合并到当前 master（在工作区产生变更，但不提交）
       - name: Merge upstream/master into local master (no commit)
         run: |
-          git merge upstream/master --no-edit || true
+          # 这里不要吞错：一旦冲突，直接失败，让你人工处理
+          git merge --no-commit --no-ff upstream/master
 
-      # 由 create-pull-request 自动创建分支并开 PR（base=master, branch=sync-upstream-YYYYMMDD）
+      - name: Show diff (debug)
+        run: |
+          git status
+          git diff --stat
+
       - name: Create Pull Request
         uses: peter-evans/create-pull-request@v6
         with:
           base: master
           branch: sync-upstream-${{ github.run_id }}
-          title: chore: sync upstream
+          delete-branch: true
+          title: "chore: sync upstream"
           body: |
             Automated sync from cedar2025/Xboard upstream.
             Review changes and merge if safe.
