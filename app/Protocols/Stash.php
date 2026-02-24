@@ -312,11 +312,16 @@ class Stash extends AbstractProtocol
 
         switch (data_get($protocol_settings, 'network')) {
             case 'tcp':
-                if ($headerType = data_get($protocol_settings, 'network_settings.header.type', 'tcp') != 'tcp') {
-                    $array['network'] = $headerType;
+                // Stash/Clash: network 必须是 string（tcp/ws/grpc/http...），不能是 bool
+                // 这里的 header.type 取值一般是：none / http（用于伪装），而 network 本身应为 tcp
+                $array['network'] = 'tcp';
+
+                // 如果选择了 TCP + HTTP 伪装，则补充 http-opts
+                $headerType = data_get($protocol_settings, 'network_settings.header.type', 'none');
+                if ($headerType === 'http') {
                     if ($httpOpts = array_filter([
                         'headers' => data_get($protocol_settings, 'network_settings.header.request.headers'),
-                        'path' => data_get($protocol_settings, 'network_settings.header.request.path', ['/'])
+                        'path' => data_get($protocol_settings, 'network_settings.header.request.path', ['/']),
                     ])) {
                         $array['http-opts'] = $httpOpts;
                     }
